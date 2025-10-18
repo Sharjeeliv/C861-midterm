@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class VGG16(nn.Module):
     def __init__(self, num_classes=10):
         super(VGG16, self).__init__()

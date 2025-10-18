@@ -1,11 +1,12 @@
-import torch
-from torch.optim import lr_scheduler
-from torchvision import datasets, models, transforms, utils
-from torch.utils.data import DataLoader
+from typing import Tuple
 from pathlib import Path
 import os
 
-from typing import Tuple
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+
+
+
 
 # Load Arabic Digit Dataset for CNN
 
@@ -20,28 +21,27 @@ BATCH_SIZE = 64
 
 # SETUP PATHS
 ROOT = Path(__file__).parent.parent
-TEST_PATH = ROOT / 'data' / 'test'
-TRAIN_PATH = ROOT / 'data' / 'train'
+TEST_PATH = ROOT / 'data' / f'urdu_test'
+TRAIN_PATH = ROOT / 'data' / f'urdu_train'
 
-def filename_label_to_subdir(path: Path, exts: Tuple=('png')):
-    for p in path.iterdir():
-        if not p.is_file(): continue
-        if not p.name.lower().endswith(exts): continue
+# def filename_label_to_subdir(path: Path, exts: Tuple=('png')):
+#     for p in path.iterdir():
+#         if not p.is_file(): continue
+#         if not p.name.lower().endswith(exts): continue
 
-        # Extract label from filename
-        label = p.name.split('_')[-1].split('.')[0]
-        subdir = path / label
-        subdir.mkdir(exist_ok=True)
-        p.rename(subdir / p.name) 
+#         # Extract label from filename
+#         label = p.name.split('_')[-1].split('.')[0]
+#         subdir = path / label
+#         subdir.mkdir(exist_ok=True)
+#         p.rename(subdir / p.name) 
 
-filename_label_to_subdir(TRAIN_PATH)
-filename_label_to_subdir(TEST_PATH)
-
-
+# filename_label_to_subdir(TRAIN_PATH)
+# filename_label_to_subdir(TEST_PATH)
 
 
 # # Define transforms - Might need another for other dataset
 transform = transforms.Compose([
+    transforms.Resize((32, 32)),
     transforms.ToTensor(),
 ])
 
@@ -60,7 +60,7 @@ transform = transforms.Compose([
 # train_data = datasets.ImageFolder(root=TRAIN_PATH, transform=train_transform)
 # test_data = datasets.ImageFolder(root=TEST_PATH, transform=test_transform)
 
-print(os.listdir(TEST_PATH / '1')[:10])
+# print(os.listdir(TEST_PATH / '1')[:10])
 
 # Load datasets
 train_data = datasets.ImageFolder(root=TRAIN_PATH, transform=transform)
@@ -75,8 +75,8 @@ print(f"Classes: {train_data.classes}")
 print(f"Training samples: {len(train_data)}")
 print(f"Testing samples: {len(test_data)}")
 
-# Visualize one batch
-import matplotlib.pyplot as plt
-images, labels = next(iter(train_loader))
-plt.imshow(utils.make_grid(images[:8], nrow=8).permute(1, 2, 0))
-plt.show()
+# # Visualize one batch
+# import matplotlib.pyplot as plt
+# images, labels = next(iter(train_loader))
+# plt.imshow(utils.make_grid(images[:8], nrow=8).permute(1, 2, 0))
+# plt.show()
