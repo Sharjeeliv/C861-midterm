@@ -1,12 +1,16 @@
 import torch
+from time import time
 
 EPOCHS = 15
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
+# print(device)
 
 def train(model, optimizer, criterion, train_loader):
+    cul_time = 0
     for epoch in range(EPOCHS):
+        starttime = time()
+        model.to(device)
         model.train()
         running_loss = 0.0
         correct = total = 0
@@ -27,11 +31,15 @@ def train(model, optimizer, criterion, train_loader):
 
         train_loss = running_loss / total
         train_acc = 100.0 * correct / total
-        print(f"Epoch {epoch+1}/{EPOCHS} - Loss: {train_loss:.4f}, Accuracy: {train_acc:.2f}%")
+        total_time = time() - starttime
+        cul_time += total_time
+        print(f"Epoch {epoch+1}/{EPOCHS} - Loss: {train_loss:.4f}, Accuracy: {train_acc:.2f}%, Time: {total_time:.2f}s")
+    print(f"Total Training Time: {cul_time:.2f}s")
 
 
 def evaluate(model, test_loader):
     # Evaluate on test set
+    model.to(device)
     model.eval()  # set model to evaluation mode
     correct = total = 0
     with torch.no_grad():
