@@ -57,7 +57,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(128, 256, 2, stride=2)
         self.layer4 = self._make_layer(256, 512, 2, stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512, num_classes)
+        self.fcf = nn.Linear(512, num_classes)
 
     def _make_layer(self, in_channels, out_channels, blocks, stride=1):
         layers = []
@@ -89,7 +89,7 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = self.fc(x)
+        x = self.fcf(x)
 
         return x
 
@@ -127,7 +127,7 @@ class AlexNet(nn.Module):
                 nn.Dropout(0.5),
                 nn.Linear(4096, 4096),
                 nn.ReLU())
-            self.fc2= nn.Sequential(
+            self.fcf= nn.Sequential(
                 nn.Linear(4096, num_classes))
 
         def forward(self, x):
@@ -139,5 +139,5 @@ class AlexNet(nn.Module):
             out = out.reshape(out.size(0), -1)
             out = self.fc(out)
             out = self.fc1(out)
-            out = self.fc2(out)
+            out = self.fcf(out)
             return out

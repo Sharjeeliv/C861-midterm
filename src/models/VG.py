@@ -70,7 +70,7 @@ class VGG16(nn.Module):
             nn.Dropout(0.5),
             nn.Linear(4096, 4096),
             nn.ReLU())
-        self.fc2= nn.Sequential(
+        self.fcf= nn.Sequential(
             nn.Linear(4096, num_classes))
         
     def forward(self, x):
@@ -90,5 +90,5 @@ class VGG16(nn.Module):
         out = out.reshape(out.size(0), -1)
         out = self.fc(out)
         out = self.fc1(out)
-        out = self.fc2(out)
+        out = self.fcf(out)
         return out

@@ -3,13 +3,15 @@ import torch
 # Relative Imports
 from .models.CNN import BasicCNN
 from .train import train, evaluate
-from .data import train_loader, test_loader
+from .data import load_dataset
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
-
-def run_all():
-    pass
+DATASET_NCLS = {
+    "arabic":   28,
+    "urdu":     40,
+    "english":  26
+}
 
 def finetune():
     weights = "weights\BasicCNN_Arabic_model.pth"
@@ -36,17 +38,17 @@ def finetune():
     evaluate(model, test_loader)
 
 
-
 def main():
-    # Initialize model, loss function, and optimizer
-    # Arabic=28, Urdu=36-40
-    model = BasicCNN(num_classes=28)
+    LANG = 'arabic'  # Change as needed
+
+    train_loader, val_loader, test_loader = load_dataset(LANG, class_n=100)
+    model = BasicCNN(num_classes=DATASET_NCLS[LANG])
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    train(model, optimizer, criterion, train_loader, "BasicCNN", "Arabic")
+    
+    train(model, optimizer, criterion, train_loader, "BasicCNN", LANG)
     evaluate(model, test_loader)
 
 
 if __name__ == "__main__":
-    finetune()
+    main()
