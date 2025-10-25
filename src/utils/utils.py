@@ -1,0 +1,43 @@
+
+
+# INVESTIGATE OPTUNA PRUNING AS EARLY STOPPING
+
+# Initialize as follows:
+# early_stopping = EarlyStopping(patience=5, delta=0.01)
+
+# Example usage:
+# early_stopping(val_loss, model)
+#     if early_stopping.early_stop:
+#         print("Early stopping")
+#         break
+
+# early_stopping.load_best_model(model)
+
+class EarlyStopping:
+    def __init__(self, patience=5, delta=0):
+        self.patience = patience
+        self.delta = delta
+        self.best_score = None
+        self.early_stop = False
+        self.counter = 0
+        self.best_model_state = None
+
+    def __call__(self, val_loss, model):
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.counter < self.patience: return
+            self.early_stop = True
+
+        else:
+            self.best_score = score
+            self.best_model_state = model.state_dict()
+            self.counter = 0
+
+    def load_best_model(self, model):
+        model.load_state_dict(self.best_model_state)
