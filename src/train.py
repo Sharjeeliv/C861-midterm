@@ -28,9 +28,7 @@ from torch.utils.data import DataLoader
 # ********************************
 EPOCHS = 15
 WEIGHTS_DIR = "weights"
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 models = None
 
 # ********************************
@@ -50,6 +48,7 @@ def train(model, optimizer, criterion, train_loader):
 
 def validate(model, val_loader, criterion):
     model.eval()
+    nclasses = model.nclasses
     val_loss, total = 0.0, 0
     val_acc = Accuracy(task="multiclass", num_classes=nclasses).to(device)
     with torch.no_grad():
@@ -108,10 +107,11 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     print(f"Total Training Time: {total_time:.2f}s")
 
 
-def evaluate(model, test_loader, nclasses, device):
+def evaluate(model, test_loader, device):
     model.to(device)
     model.eval()
-
+    nclasses = model.nclasses
+    
     metrics = {
         "Accuracy": Accuracy(task="multiclass", num_classes=nclasses).to(device),
         "Precision": Precision(task="multiclass", num_classes=nclasses).to(device),

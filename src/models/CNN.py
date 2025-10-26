@@ -6,6 +6,7 @@ import torch.nn.functional as F
 class BasicCNN(nn.Module):
     def __init__(self, num_classes=10):
         super(BasicCNN, self).__init__()
+        self.nclasses = num_classes
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
@@ -29,6 +30,7 @@ class BasicCNN(nn.Module):
 class LeNet5(nn.Module):
     def __init__(self, num_classes=10):
         super(LeNet5, self).__init__()
+        self.nclasses = num_classes
         self.conv1 = nn.Conv2d(3, 6, kernel_size=5)
         self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
         self.fc1 = nn.Linear(16 * 5 * 5, 120)

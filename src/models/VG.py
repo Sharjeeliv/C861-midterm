@@ -5,6 +5,7 @@ import torch.nn.functional as F
 class VGG16(nn.Module):
     def __init__(self, num_classes=10):
         super(VGG16, self).__init__()
+        self.nclasses = num_classes
         self.layer1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),

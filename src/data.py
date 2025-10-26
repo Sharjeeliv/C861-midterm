@@ -1,9 +1,12 @@
 from pathlib import Path
-import numpy as np
+from collections import Counter
 
+import numpy as np
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
+
+
 
 # VARIABLES
 # NUM_WORKERS Causes issues on Windows; set to 0
@@ -24,10 +27,6 @@ transform = transforms.Compose([
 # ************************
 # HELPERS FUNCTION
 # ************************
-from torchvision import datasets
-from pathlib import Path
-from collections import Counter
-
 def print_class_counts(dataset_path, transform=None):
     dataset = datasets.ImageFolder(root=dataset_path, transform=transform)
     counts = Counter(dataset.targets)
@@ -41,7 +40,6 @@ def print_class_counts(dataset_path, transform=None):
     print(f"Min: {min_samples}")
     print(f"Max: {max_samples}")
     print(f"Avg: {avg_samples:.2f}")
-
 
 
 def subsample_per_class(data: datasets.ImageFolder, n: int = 0, fraction: float = 1):
@@ -78,6 +76,7 @@ def subsample_per_class(data: datasets.ImageFolder, n: int = 0, fraction: float 
 
     np.random.shuffle(indices)
     return Subset(data, indices)
+
 
 def train_val_split_per_class(subset, val_fraction=0.1, seed=None):
     """
