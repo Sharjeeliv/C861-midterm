@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 
 
-
 # VARIABLES
 # NUM_WORKERS Causes issues on Windows; set to 0
 BATCH_SIZE = 256
