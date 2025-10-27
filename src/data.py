@@ -3,8 +3,7 @@ from collections import Counter
 
 import numpy as np
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-from torch.utils.data import Subset
+from torch.utils.data import DataLoader, Subset, ConcatDataset
 
 
 # VARIABLES
@@ -129,6 +128,11 @@ def make_dataloader(input_data):
 # ************************
 # INTERFACE FUNCTION
 # ************************
+def combine_loaders(loader1: DataLoader, loader2: DataLoader):
+    ds1, ds2 = loader1.dataset, loader2.dataset
+    ds3 = ConcatDataset([ds1, ds2])
+    return make_dataloader(ds3)
+
 def load_dataset(lang: str, class_n: int = 0, class_frac: float = 1, val_frac: float = 0.1, seed: int = 42):
     """
     Load dataset for a given language with optional subsampling.
@@ -159,9 +163,9 @@ def load_dataset(lang: str, class_n: int = 0, class_frac: float = 1, val_frac: f
     # SPLIT TRAIN → TRAIN + VALIDATION
     train_data, val_data = train_val_split_per_class(full_train_data, val_fraction=val_frac, seed=seed)
 
-    print(len(train_data))
-    print(len(val_data))
-    print(len(test_data))
+    # print(len(train_data))
+    # print(len(val_data))
+    # print(len(test_data))
 
     # DATA LOADERS
     train_loader = make_dataloader(train_data)

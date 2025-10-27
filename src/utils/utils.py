@@ -14,7 +14,7 @@
 # early_stopping.load_best_model(model)
 
 class EarlyStopping:
-    def __init__(self, patience=5, delta=0):
+    def __init__(self, patience=5, delta=1e-3):
         self.patience = patience
         self.delta = delta
         self.best_score = None

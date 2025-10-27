@@ -12,6 +12,13 @@ import optuna
 from optuna import Trial
 from torch.utils.data import DataLoader
 
+# Relative Imports
+from .models.CNN import BasicCNN, LeNet5
+from .models.ResNet import ResNet
+from .models.VG import VGG16
+from .utils.utils import EarlyStopping
+from .data import combine_loaders
+
 
 # TODO:
 # 1. Complete the objective function for Optuna hyperparameter tuning
@@ -27,15 +34,35 @@ from torch.utils.data import DataLoader
 # CONSTANTS, VARIABLES AND SETUP
 # ********************************
 EPOCHS = 15
+N_TRIALS = 5
 WEIGHTS_DIR = "weights"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-models = None
+MODELS = {
+    "BasicCNN": BasicCNN,
+    "LeNet5": LeNet5,
+    "ResNet": ResNet,
+    "VGG16": VGG16,
+}
 
 # ********************************
 # HELPER FUNCTIONS
 # ********************************
-def train(model, optimizer, criterion, train_loader):
+# def _train(model, optimizer, criterion, train_loader):
+#     model.train()
+#     for images, labels in train_loader:
+#         images, labels = images.to(device), labels.to(device)
+
+#         optimizer.zero_grad()
+#         outputs = model(images)
+#         loss = criterion(outputs, labels)
+#         loss.backward()
+#         optimizer.step()
+
+def _train(model, optimizer, criterion, train_loader, log=False):
     model.train()
+    nclasses = model.nclasses
+    tr_loss, total = 0.0, 0
+    tr_acc = Accuracy(task="multiclass", num_classes=nclasses).to(device)
     for images, labels in train_loader:
         images, labels = images.to(device), labels.to(device)
 
@@ -45,8 +72,33 @@ def train(model, optimizer, criterion, train_loader):
         loss.backward()
         optimizer.step()
 
+        if not log: continue
+        tr_loss += loss.item() * images.size(0)
+        total += labels.size(0)
+        preds = outputs.argmax(dim=1)
+        tr_acc.update(preds, labels)
 
-def validate(model, val_loader, criterion):
+    tr_loss /= total
+    tr_acc = tr_acc.compute().item() * 100
+    print(f"Train:\tLoss: {tr_loss:.4f} \t Accuracy: {tr_acc:.2f}%")
+
+
+def _train_loop(model, optimizer, criterion, train_loader, val_loader):
+    full_train_loader = combine_loaders(train_loader, val_loader)
+    total_time = 0.0
+    for epoch in range(EPOCHS):
+        start_time = time()
+        # Training & Validation
+        print(f"E={epoch + 1}", end="\t")
+        _train(model, optimizer, criterion, full_train_loader, log=True)
+        # Timing and reporting
+        epoch_time = time() - start_time
+        total_time += epoch_time
+
+    print(f"Total Training Time: {total_time:.2f}s")
+
+
+def _validate(model, val_loader, criterion):
     model.eval()
     nclasses = model.nclasses
     val_loss, total = 0.0, 0
@@ -62,7 +114,7 @@ def validate(model, val_loader, criterion):
             val_acc.update(preds, labels)
     val_loss /= total
     val_acc = val_acc.compute().item() * 100
-    print(f"Validation Loss: {val_loss:.4f}\nValidation Accuracy: {val_acc:.2f}%")
+    print(f"Val:\tLoss: {val_loss:.4f} \t Accuracy: {val_acc:.2f}%")
     return val_loss, val_acc
 
 
@@ -74,15 +126,15 @@ def save_model(model, title):
 # ********************************
 # INTERFACE FUNCTIONS
 # ********************************
-def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: DataLoader):
+def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: DataLoader, n_classes: int):
     # Guard Clause
     err_string = f"Model {model_name} not found in models dictionary."
-    if model_name not in models: raise ValueError(err_string)
+    if model_name not in MODELS: raise ValueError(err_string)
     
     # Retrieve and instantiate model
-    model_cls = models[model_name]
+    model_cls = MODELS[model_name]
     trial_params = get_trial_params(trial, model_name)
-    model = model_cls(**trial_params)
+    model = model_cls(**trial_params, num_classes=n_classes)
     model.to(device)
 
     # Criterion and optimizer
@@ -94,8 +146,9 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     for epoch in range(EPOCHS):
         start_time = time()
         # Training & Validation
-        train(model, optimizer, criterion, tr_loader)
-        vloss, vacc = validate(model, val_loader, criterion)
+        print(f"E={epoch + 1}", end="\t")
+        _train(model, optimizer, criterion, tr_loader)
+        vloss, vacc = _validate(model, val_loader, criterion)
         # Timing and reporting
         epoch_time = time() - start_time
         total_time += epoch_time
@@ -105,18 +158,19 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
         trial.report(vloss, epoch)
         if trial.should_prune(): raise optuna.TrialPruned()
     print(f"Total Training Time: {total_time:.2f}s")
+    return vloss
 
 
 def evaluate(model, test_loader, device):
     model.to(device)
     model.eval()
-    nclasses = model.nclasses
+    n_classes = model.nclasses
     
     metrics = {
-        "Accuracy": Accuracy(task="multiclass", num_classes=nclasses).to(device),
-        "Precision": Precision(task="multiclass", num_classes=nclasses).to(device),
-        "Recall": Recall(task="multiclass", num_classes=nclasses).to(device),
-        "F1Score": F1Score(task="multiclass", num_classes=nclasses).to(device)
+        "Accuracy": Accuracy(task="multiclass", num_classes=n_classes).to(device),
+        "Precision": Precision(task="multiclass", num_classes=n_classes).to(device),
+        "Recall": Recall(task="multiclass", num_classes=n_classes).to(device),
+        "F1Score": F1Score(task="multiclass", num_classes=n_classes).to(device)
     }
 
     with torch.no_grad():
@@ -145,3 +199,21 @@ def finetune(model):
     else:
         # If the model has a different architecture, adjust accordingly
         raise ValueError("Model does not have a 'fcf' layer. Adjust finetune_setup accordingly.")
+
+
+def tune(model_name, tr_loader, val_loader, n_classes):
+    # Hyperparameter Tuning
+    study = optuna.create_study(direction='minimize')
+    study.optimize(lambda trial: objective(trial, model_name, tr_loader, val_loader, n_classes), n_trials=N_TRIALS)
+    return study.best_params
+    # Training
+    model_cls = MODELS[model_name]
+    model = model_cls(**study.best_params, num_classes=n_classes)
+    model.to(device)
+
+    # Criterion and optimizer
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    _train_loop(model, optimizer, criterion, tr_loader, val_loader)
+
+    # Evaluate

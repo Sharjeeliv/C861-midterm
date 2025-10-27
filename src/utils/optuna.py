@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 
 # Code to initialize params dictionary
-ROOT = Path(__file__).parent.parent
+ROOT = Path(__file__).parent.parent.parent
 params = json.load(open(ROOT / 'config' / 'params.json'))
 
 
@@ -23,3 +23,4 @@ def get_trial_params(trial: Trial, model_name: str):
         suggest_fn = trial_type(trial, param_name, param_range)
         model_params[param_name] = suggest_fn
     return model_params
+

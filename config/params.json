@@ -1,0 +1,13 @@
+{
+  "BasicCNN": {
+    "dropout": ["flt", 0.2, 0.6]
+  },
+  "CNN": {
+    "num_conv_layers": ["int", 2, 4],
+    "filters": ["cat", 16, 32, 64, 128],
+    "kernel_size": ["cat", 3, 5],
+    "activation": ["cat", "ReLU", "LeakyReLU"],
+    "fc_size": ["cat", 64, 128, 256],
+    "dropout": ["flt", 0.2, 0.5]
+  }
+}
