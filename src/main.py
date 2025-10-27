@@ -5,8 +5,8 @@ from .models.CNN import BasicCNN, LeNet5
 from .models.ResNet import ResNet
 from .models.VG import VGG16
 
-from .train import tune, evaluate
-from .data import load_dataset
+from .train import tune, evaluate, train
+from .data import load_dataset, combine_loaders
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -71,10 +71,16 @@ def main():
 
 
 def testing():
-    LANG = 'urdu'  # Change as needed
+    LANG = 'english'  # Change as needed
     train_loader, val_loader, test_loader = load_dataset(LANG, class_n=480)
-    vals = tune(model_name='CNN', tr_loader=train_loader, val_loader=val_loader, n_classes=DATASET_NCLS[LANG])
-    print(vals)
+    # optimal_params = tune(model_name='CNN', tr_loader=train_loader, val_loader=val_loader, n_classes=DATASET_NCLS[LANG])
+    # print(vals)
+
+    optimal_params = {'num_conv_layers': 3, 'filters': 32, 'kernel_size': 5, 'activation': 'LeakyReLU', 'fc_size': 256, 'dropout': 0.3636054916994534}
+    
+    combined_loader = combine_loaders(train_loader, val_loader)
+    model = train(model_name='CNN', tr_loader=combined_loader, n_classes=DATASET_NCLS[LANG], optimal_params=optimal_params)
+    res = evaluate(model, test_loader)
 
 
 if __name__ == "__main__":

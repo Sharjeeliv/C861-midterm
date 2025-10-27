@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class CNN(nn.Module):
     def __init__(
         self,
-        input_channels=1,
+        input_channels=3,
         num_classes=10,
         num_conv_layers=3,
         filters=32,
@@ -16,6 +16,8 @@ class CNN(nn.Module):
         dropout=0.5,
     ):
         super(CNN, self).__init__()
+
+        self.nclasses = num_classes
 
         # Activation function
         if activation == "ReLU":        act_fn = nn.ReLU
@@ -39,23 +41,22 @@ class CNN(nn.Module):
 
         self.feature_extractor = nn.Sequential(*layers)
 
-        # --- Compute flattened feature size (since input is 32x32) ---
-        # Each MaxPool2d(2) halves spatial dims → 32 -> 16 -> 8 -> 4 (for 3 conv layers)
-        num_pools = num_conv_layers
-        spatial_size = 32 // (2 ** num_pools)
-        flat_features = in_channels * spatial_size * spatial_size
+        # compute flatten size dynamically
+        with torch.no_grad():
+            dummy_input = torch.zeros(1, 3, 32, 32)  # batch=1, 3 channels
+            dummy_output = self.feature_extractor(dummy_input)
+            self.flatten_size = dummy_output.view(1, -1).size(1)
 
-        # --- Classifier ---
         self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(flat_features, fc_size),
+            nn.Linear(self.flatten_size, fc_size),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(fc_size, num_classes),
+            nn.Linear(fc_size, num_classes)
         )
 
     def forward(self, x):
         x = self.feature_extractor(x)
+        x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 

@@ -13,7 +13,7 @@ from optuna import Trial
 from torch.utils.data import DataLoader
 
 # Relative Imports
-from .models.CNN import BasicCNN, LeNet5
+from .models.CNN import BasicCNN, LeNet5, CNN
 from .models.ResNet import ResNet
 from .models.VG import VGG16
 from .utils.utils import EarlyStopping
@@ -42,6 +42,7 @@ MODELS = {
     "LeNet5": LeNet5,
     "ResNet": ResNet,
     "VGG16": VGG16,
+    "CNN": CNN
 }
 
 # ********************************
@@ -78,23 +79,30 @@ def _train(model, optimizer, criterion, train_loader, log=False):
         preds = outputs.argmax(dim=1)
         tr_acc.update(preds, labels)
 
+    if not log: return
     tr_loss /= total
     tr_acc = tr_acc.compute().item() * 100
     print(f"Train:\tLoss: {tr_loss:.4f} \t Accuracy: {tr_acc:.2f}%")
+    return tr_loss
 
 
-def _train_loop(model, optimizer, criterion, train_loader, val_loader):
-    full_train_loader = combine_loaders(train_loader, val_loader)
+def _train_loop(model, optimizer, criterion, train_loader):
+    early_stopping = EarlyStopping()
     total_time = 0.0
     for epoch in range(EPOCHS):
         start_time = time()
         # Training & Validation
         print(f"E={epoch + 1}", end="\t")
-        _train(model, optimizer, criterion, full_train_loader, log=True)
+        tr_loss = _train(model, optimizer, criterion, train_loader, log=True)
         # Timing and reporting
         epoch_time = time() - start_time
         total_time += epoch_time
-
+        # Early Stopping
+        early_stopping(tr_loss)
+        if early_stopping.early_stop: 
+            print(f"Early stop! Total Training Time: {total_time:.2f}s")
+            return
+        
     print(f"Total Training Time: {total_time:.2f}s")
 
 
@@ -134,7 +142,9 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     # Retrieve and instantiate model
     model_cls = MODELS[model_name]
     trial_params = get_trial_params(trial, model_name)
-    model = model_cls(**trial_params, num_classes=n_classes)
+    # Omit invalid configurations:
+    try: model = model_cls(**trial_params, num_classes=n_classes)
+    except RuntimeError: raise optuna.exceptions.TrialPruned()
     model.to(device)
 
     # Criterion and optimizer
@@ -161,16 +171,16 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     return vloss
 
 
-def evaluate(model, test_loader, device):
+def evaluate(model, test_loader):
     model.to(device)
     model.eval()
     n_classes = model.nclasses
     
     metrics = {
-        "Accuracy": Accuracy(task="multiclass", num_classes=n_classes).to(device),
-        "Precision": Precision(task="multiclass", num_classes=n_classes).to(device),
-        "Recall": Recall(task="multiclass", num_classes=n_classes).to(device),
-        "F1Score": F1Score(task="multiclass", num_classes=n_classes).to(device)
+        "Accuracy": Accuracy(task="multiclass", num_classes=n_classes, average='macro').to(device),
+        "Precision": Precision(task="multiclass", num_classes=n_classes, average='macro').to(device),
+        "Recall": Recall(task="multiclass", num_classes=n_classes, average='macro').to(device),
+        "F1Score": F1Score(task="multiclass", num_classes=n_classes, average='macro').to(device)
     }
 
     with torch.no_grad():
@@ -184,7 +194,7 @@ def evaluate(model, test_loader, device):
 
     # Compute & print metrics
     results = {name: metric.compute().item() for name, metric in metrics.items()}
-    for name, value in results.items(): print(f"{name} \t {value:.4f}")
+    for name, value in results.items(): print(f"{name:<15}{value:.4f}")
 
     return results
 
@@ -204,16 +214,19 @@ def finetune(model):
 def tune(model_name, tr_loader, val_loader, n_classes):
     # Hyperparameter Tuning
     study = optuna.create_study(direction='minimize')
+    print(len(tr_loader))
+    print(len(val_loader))
     study.optimize(lambda trial: objective(trial, model_name, tr_loader, val_loader, n_classes), n_trials=N_TRIALS)
+    
     return study.best_params
-    # Training
+
+def train(model_name, tr_loader, n_classes, optimal_params):
     model_cls = MODELS[model_name]
-    model = model_cls(**study.best_params, num_classes=n_classes)
+    model = model_cls(**optimal_params, num_classes=n_classes)
     model.to(device)
 
     # Criterion and optimizer
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    _train_loop(model, optimizer, criterion, tr_loader, val_loader)
-
-    # Evaluate
+    _train_loop(model, optimizer, criterion, tr_loader)
+    return model
