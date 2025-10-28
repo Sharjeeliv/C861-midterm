@@ -34,9 +34,8 @@ class EarlyStopping:
 # ********************************
 # HELPER FUNCTIONS (INTERFACE)
 # ********************************
-def save_model(model, model_name, lang, split, root, finetune=False):
-    tag = 'ft-' if finetune else ""
-    path = root / 'weights' / f"{lang}{split}_{tag}{model_name}_mdl.pth"
+def save_model(model, title, root):
+    path = root / 'weights' / f"{title}.pth"
     torch.save(model.state_dict(), path)
 
 

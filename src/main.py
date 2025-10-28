@@ -23,26 +23,29 @@ MODELS = {
     "ResNet": ResNet,
     "VGG16": VGG16,
 }
+TR_SPLITS = [0, 480]
 
 def expr3():
-    split = 480
-    lang = "ar"
+    split = 100
+    lang = "ur"
     model_name = 'CNN'
-    weights_path = "weights\BasicCNN_english_model.pth"
-    json_path = None
 
+    base_model_name = "ar480_CNN"
+    weights_path = ROOT / "weights" / f"{base_model_name}.pth"
+    json_path = ROOT / "results" / "metrics" / f"{base_model_name}.json"
+    base_lang = base_model_name[:2]
     # Input parameter and data setup
     optimal_params = json.load(open(json_path, 'r'))['Best_Hyperparameters']
     train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
     combined_loader = combine_loaders(train_loader, val_loader)
+
     # Model finetuning and evaluation
-    model = finetune(model_name, weights_path, DATASET_NCLS[lang], combined_loader, optimal_params)
+    model = finetune(model_name, weights_path, DATASET_NCLS[lang], combined_loader, optimal_params,  DATASET_NCLS[base_lang])
     res = evaluate(model, test_loader)
 
-    base_model = "en480_CNN"
-    title = f"{lang}{split}_{base_model}-ft"
+    title = f"{lang}{split}_{base_model_name}-ft"
     save_output(res, optimal_params, title, ROOT)
-    save_model(model, model_name, lang, split, ROOT)
+    save_model(model, title, ROOT)
 
 
 def expr2():
@@ -93,12 +96,42 @@ def main():
 
 
 
+def all_train():
+
+    # Train model per lang per split
+    for model_name in MODELS.keys():
+        for lang in DATASET_NCLS.keys():
+            for split in TR_SPLITS:
+
+                # Special Condition for english dataset:
+                if lang == 'en' and split == 0:
+                    # Tune on reduced data, train on full data
+                    train_loader, val_loader, test_loader = load_dataset(lang, class_n=480)
+                    optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
+                    train_loader, val_loader, test_loader = load_dataset(lang, class_n=0)
+                else:
+                    train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
+                    optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
+                
+                print(optimal_params)
+
+                combined_loader = combine_loaders(train_loader, val_loader)
+                model = train(model_name=model_name, tr_loader=combined_loader, n_classes=DATASET_NCLS[lang], optimal_params=optimal_params)
+                res = evaluate(model, test_loader)
+
+                title = f"{lang}{split}_{model_name}"
+                save_output(res, optimal_params, title, ROOT)
+                save_model(model, title, ROOT)
+
+    print("Completed all baselines model training")
+
 def testing():
     model_name = 'LeNet5'
     split = 480
     for lang in ['ar']:
         train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
         optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
+        print(optimal_params)
 
         combined_loader = combine_loaders(train_loader, val_loader)
         model = train(model_name=model_name, tr_loader=combined_loader, n_classes=DATASET_NCLS[lang], optimal_params=optimal_params)
@@ -106,7 +139,7 @@ def testing():
 
         title = f"{lang}{split}_{model_name}"
         save_output(res, optimal_params, title, ROOT)
-        save_model(model, model_name, lang, split, ROOT)
+        save_model(model, title, ROOT)
 
 
 if __name__ == "__main__":

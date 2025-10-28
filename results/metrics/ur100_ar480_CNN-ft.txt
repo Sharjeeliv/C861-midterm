@@ -1,8 +1,8 @@
 === Evaluation Results ===
-Accuracy       0.9137
-Precision      0.9196
-Recall         0.9137
-F1Score        0.9136
+Accuracy       0.7450
+Precision      0.7441
+Recall         0.7450
+F1Score        0.7414
 
 === Best Hyperparameters ===
 num_conv_layers     3

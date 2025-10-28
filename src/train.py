@@ -22,6 +22,7 @@ from torch.utils.data import DataLoader
 # ********************************
 # CONSTANTS, VARIABLES AND SETUP
 # ********************************
+FT_EPOCHS = 30
 EPOCHS = 15
 N_TRIALS = 5
 WEIGHTS_DIR = "weights"
@@ -66,10 +67,10 @@ def _train(model, optimizer, criterion, train_loader, log=False):
     return tr_loss
 
 
-def _train_loop(model, optimizer, criterion, train_loader):
+def _train_loop(model, optimizer, criterion, train_loader, epochs=EPOCHS):
     early_stopping = EarlyStopping()
     total_time = 0.0
-    for epoch in range(EPOCHS):
+    for epoch in range(epochs):
         start_time = time()
         # Training & Validation
         print(f"E={epoch + 1}", end="\t")
@@ -174,7 +175,7 @@ def _update_classifier(model, n_letters):
     # Update classifier
     for param in model.fcf.parameters():
         param.requires_grad = True
-
+    return model
 
 # ********************************
 # INTERFACE FUNCTIONS
@@ -207,17 +208,18 @@ def evaluate(model, test_loader):
     return results
     
 
-def finetune(model_name, weights_path, n_letters, tr_loader, optimal_params):
-    # Retrieve and update model
-    model = MODELS[model_name]
+def finetune(model_name, weights_path, n_letters, tr_loader, optimal_params, nclasses):
+    # Retrieve, initialize and update model
+    model = get_model(model_name, optimal_params, nclasses)
     model.load_state_dict(torch.load(weights_path))
     _update_classifier(model, n_letters)
+    model.nclasses = n_letters
     model.to(device)
 
     # Criterion and optimizer
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = get_optimizer(model_name, model, optimal_params)
-    _train_loop(model, optimizer, criterion, tr_loader)
+    _train_loop(model, optimizer, criterion, tr_loader, epochs=FT_EPOCHS)
     return model
     
 
@@ -240,8 +242,6 @@ def tune(model_name, tr_loader, val_loader, n_classes, lang, split):
 
     for name, fig in figs.items():
         fig.write_image(fig_dir / f"{lang}{split}_{model_name}_{name}.png")
-
-    
     return study.best_params
 
 

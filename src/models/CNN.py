@@ -60,9 +60,9 @@ class CNN(nn.Module):
     def forward(self, x):
         x = self.feature_extractor(x)
         x = torch.flatten(x, 1)
-        x = torch.relu(self.fcf(x))
+        x = torch.relu(self.fc(x))
         x = self.dropout(x)
-        x = self.output_layer(x)
+        x = self.fcf(x)
         return x
 
 # Pytorch Basic CNN Model:
