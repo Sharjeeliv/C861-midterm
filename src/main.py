@@ -1,5 +1,6 @@
 import torch
 import json
+import time
 
 # Relative Imports
 from .models.CNN import BasicCNN, LeNet5
@@ -97,7 +98,7 @@ def main():
 
 
 def all_train():
-
+    start = time.time()
     # Train model per lang per split
     for model_name in MODELS.keys():
         for lang in DATASET_NCLS.keys():
@@ -122,8 +123,8 @@ def all_train():
                 title = f"{lang}{split}_{model_name}"
                 save_output(res, optimal_params, title, ROOT)
                 save_model(model, title, ROOT)
-
-    print("Completed all baselines model training")
+    end = time.time()
+    print(f"Completed all baselines model training\nTime: {time.strftime('%H:%M:%S', time.gmtime(end-start))}")
 
 def testing():
     model_name = 'LeNet5'
@@ -143,4 +144,4 @@ def testing():
 
 
 if __name__ == "__main__":
-    testing()
+    all_train()
