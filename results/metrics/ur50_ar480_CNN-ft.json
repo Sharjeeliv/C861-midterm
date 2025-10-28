@@ -1,9 +1,9 @@
 {
     "Evaluation_Results": {
-        "Accuracy": 0.5385674238204956,
-        "Precision": 0.5291450023651123,
-        "Recall": 0.5385674238204956,
-        "F1Score": 0.511134922504425
+        "Accuracy": 0.27005311846733093,
+        "Precision": 0.2500251829624176,
+        "Recall": 0.27005311846733093,
+        "F1Score": 0.2428492158651352
     },
     "Best_Hyperparameters": {
         "num_conv_layers": 3,

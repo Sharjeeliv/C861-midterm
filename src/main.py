@@ -25,28 +25,40 @@ MODELS = {
     "CNN": CNN
 }
 TR_SPLITS = [0, 480]
+P_WEIGHTS = ROOT / "weights"
+P_JSON = ROOT / "results" / "metrics"
 
-def expr3():
-    split = 100
-    lang = "ur"
-    model_name = 'CNN'
+def finetune_model():
+    # BASE_LANG, TUNE_LANG, SPLIT = "en", "ur", 100
+    mdl_name = 'CNN'
+    ft_experiment = {'ar' : ["ur", "en"],
+               'ur' : ['ar', 'en']}
 
-    base_model_name = "ar480_CNN"
-    weights_path = ROOT / "weights" / f"{base_model_name}.pth"
-    json_path = ROOT / "results" / "metrics" / f"{base_model_name}.json"
-    base_lang = base_model_name[:2]
-    # Input parameter and data setup
-    optimal_params = json.load(open(json_path, 'r'))['Best_Hyperparameters']
-    train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
-    combined_loader = combine_loaders(train_loader, val_loader)
+    for tune_lang, base_langs in ft_experiment.items():
+        for base_lang in base_langs:
+            for split in [50, 100]:
 
-    # Model finetuning and evaluation
-    model = finetune(model_name, weights_path, DATASET_NCLS[lang], combined_loader, optimal_params,  DATASET_NCLS[base_lang])
-    res = evaluate(model, test_loader)
+                print(f"Finetune Experiment: \t {base_lang} -> {tune_lang} \t class_samples={split}")
+                base_mdl = f'{base_lang}480_CNN'
 
-    title = f"{lang}{split}_{base_model_name}-ft"
-    save_output(res, optimal_params, title, ROOT)
-    save_model(model, title, ROOT)
+                # Initialize paths and get params
+                weights_path = P_WEIGHTS / f"{base_mdl}.pth"
+                json_path = P_JSON / f"{base_mdl}.json"
+                optim_params = json.load(open(json_path, 'r'))['Best_Hyperparameters']
+
+                # Input parameters and data setup
+                train_loader, val_loader, test_loader = load_dataset(tune_lang, class_n=split)
+                combined_loader = combine_loaders(train_loader, val_loader)
+
+                # Model finetuning and evaluation
+                model = finetune(mdl_name, weights_path, DATASET_NCLS[tune_lang], 
+                                combined_loader, optim_params,  DATASET_NCLS[base_lang],
+                                only_classifier=True)
+                res = evaluate(model, test_loader)
+
+                title = f"{tune_lang}{split}_{base_mdl}-ft"
+                save_output(res, optim_params, title, ROOT)
+                save_model(model, title, ROOT)
 
 
 def expr2():
@@ -151,4 +163,4 @@ def testing():
 
 
 if __name__ == "__main__":
-    all_train()
+    finetune_model()

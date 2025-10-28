@@ -1,0 +1,13 @@
+=== Evaluation Results ===
+Accuracy       0.1738
+Precision      0.1505
+Recall         0.1738
+F1Score        0.1480
+
+=== Best Hyperparameters ===
+num_conv_layers     3
+filters             64
+kernel_size         5
+activation          ReLU
+fc_size             64
+dropout             0.25468830417650923

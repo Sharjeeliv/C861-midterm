@@ -12,6 +12,7 @@ from pathlib import Path
 
 # Third-party
 import torch
+import torch.nn as nn
 from torchmetrics import Accuracy, Precision, Recall, F1Score
 import optuna
 from optuna import Trial
@@ -113,13 +114,15 @@ def get_model(model_name, trial_params, n_classes):
     return model_cls(**trial_params, num_classes=n_classes)
 
 
-def get_optimizer(model_name, model, trial_params):
+def get_optimizer(model_name, model, trial_params, forced_lr=0):
     if model_name != "CNN": return torch.optim.Adam(model.parameters(), lr=0.001)
     # Unpack parameters
     optimizer_type = trial_params.get("optimizer", "Adam")
     lr = trial_params.get("lr", 1e-3)
     weight_decay = trial_params.get("weight_decay", 0.0)
     # Build optimizer for remaining models
+
+    if forced_lr !=0: lr = forced_lr
     if optimizer_type == "SGD":
         return torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), 
                                lr=lr, weight_decay=weight_decay, momentum=0.9)
@@ -165,7 +168,7 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     return vloss
 
 
-def _update_classifier(model, n_letters):
+def _update_classifier(model, n_letters, only_classifier):
     # last layer is always called fcf, replace classifier head
     num_feats = model.fcf.in_features
     model.fcf = torch.nn.Linear(num_feats, n_letters)
@@ -175,6 +178,15 @@ def _update_classifier(model, n_letters):
     # Update classifier
     for param in model.fcf.parameters():
         param.requires_grad = True
+
+    if only_classifier: return model
+
+    # Update Extract (last)
+    for layer in reversed(model.feature_extractor):
+        if isinstance(layer, nn.Conv2d):
+            for param in layer.parameters():
+                param.requires_grad = True
+            break
     return model
 
 # ********************************
@@ -208,18 +220,22 @@ def evaluate(model, test_loader):
     return results
     
 
-def finetune(model_name, weights_path, n_letters, tr_loader, optimal_params, nclasses):
+def finetune(model_name, weights_path, n_letters, tr_loader, optimal_params, nclasses, only_classifier=False):
     # Retrieve, initialize and update model
     model = get_model(model_name, optimal_params, nclasses)
     model.load_state_dict(torch.load(weights_path))
-    _update_classifier(model, n_letters)
+    _update_classifier(model, n_letters, only_classifier)
     model.nclasses = n_letters
     model.to(device)
 
     # Criterion and optimizer
+
+    # epochs = FT_EPOCHS if only_classifier else EPOCHS
+    epochs = FT_EPOCHS
+    # We use constant learning rate and optim so that only models are compared
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = get_optimizer(model_name, model, optimal_params)
-    _train_loop(model, optimizer, criterion, tr_loader, epochs=FT_EPOCHS)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+    _train_loop(model, optimizer, criterion, tr_loader, epochs=epochs)
     return model
     
 

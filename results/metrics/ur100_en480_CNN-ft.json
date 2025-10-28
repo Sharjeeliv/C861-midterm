@@ -1,0 +1,16 @@
+{
+    "Evaluation_Results": {
+        "Accuracy": 0.17379239201545715,
+        "Precision": 0.150468647480011,
+        "Recall": 0.17379239201545715,
+        "F1Score": 0.14799149334430695
+    },
+    "Best_Hyperparameters": {
+        "num_conv_layers": 3,
+        "filters": 64,
+        "kernel_size": 5,
+        "activation": "ReLU",
+        "fc_size": 64,
+        "dropout": 0.25468830417650923
+    }
+}
