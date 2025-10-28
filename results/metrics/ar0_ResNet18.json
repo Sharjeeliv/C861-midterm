@@ -1,0 +1,13 @@
+{
+    "Evaluation_Results": {
+        "Accuracy": 0.8392857313156128,
+        "Precision": 0.8696394562721252,
+        "Recall": 0.8392857313156128,
+        "F1Score": 0.8403125405311584
+    },
+    "Best_Hyperparameters": {
+        "lr": 0.0043279475382665,
+        "optimizer": "Adam",
+        "weight_decay": 0.0037587584375910264
+    }
+}

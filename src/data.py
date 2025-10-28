@@ -75,44 +75,36 @@ def subsample_per_class(data: datasets.ImageFolder, n: int = 0, fraction: float 
     np.random.shuffle(indices)
     return Subset(data, indices)
 
+def unwrap_subset(subset):
+    """Flatten nested Subsets to original dataset and absolute indices."""
+    indices = np.arange(len(subset))
+    base_dataset = subset
+    while isinstance(base_dataset, Subset):
+        indices = np.array(base_dataset.indices)[indices]
+        base_dataset = base_dataset.dataset
+    return base_dataset, indices
 
 def train_val_split_per_class(subset, val_fraction=0.1, seed=None):
-    """
-    Split a subset (already possibly class-subsampled) into train and validation
-    sets, ensuring each class is represented.
-    
-    Args:
-        subset: torch.utils.data.Subset or ImageFolder
-        val_fraction: fraction of samples per class to use for validation
-        seed: optional random seed for reproducibility
-    Returns:
-        train_subset, val_subset
-    """
     if seed is not None:
         np.random.seed(seed)
-    
-    # Get the targets for this subset
-    if isinstance(subset, Subset):
-        targets = np.array([subset.dataset.targets[i] for i in subset.indices])
-        indices = np.array(subset.indices)
-    else:
-        targets = np.array(subset.targets)
-        indices = np.arange(len(subset))
-    
-    train_indices = []
-    val_indices = []
+
+    base_dataset, indices = unwrap_subset(subset)
+    targets = np.array(base_dataset.targets)[indices]
+
+    train_indices, val_indices = [], []
 
     for cls in np.unique(targets):
-        cls_idx = indices[targets == cls]
+        cls_mask = targets == cls
+        cls_idx = indices[cls_mask]
         np.random.shuffle(cls_idx)
-        n_val = max(1, int(len(cls_idx) * val_fraction))  # at least 1 sample
+        n_val = max(1, int(len(cls_idx) * val_fraction))
         val_indices.extend(cls_idx[:n_val])
         train_indices.extend(cls_idx[n_val:])
 
     np.random.shuffle(train_indices)
     np.random.shuffle(val_indices)
 
-    return Subset(subset.dataset, train_indices), Subset(subset.dataset, val_indices)
+    return Subset(base_dataset, train_indices), Subset(base_dataset, val_indices)
 
 
 def make_dataloader(input_data):

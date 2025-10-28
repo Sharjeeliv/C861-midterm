@@ -32,7 +32,7 @@ ROOT = Path(__file__).parent.parent
 MODELS = {
     "BasicCNN": BasicCNN,
     "LeNet5": LeNet5,
-    "ResNet": ResNet,
+    "ResNet18": ResNet,
     "VGG16": VGG16,
     "CNN": CNN
 }

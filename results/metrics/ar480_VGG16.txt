@@ -1,0 +1,11 @@
+=== Evaluation Results ===
+Accuracy       0.8366
+Precision      0.8436
+Recall         0.8366
+F1Score        0.8353
+
+=== Best Hyperparameters ===
+lr                  0.0009143908925264311
+optimizer           Adam
+weight_decay        0.00023366037826696702
+dropout             0.4570586709414918

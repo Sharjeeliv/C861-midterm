@@ -3,7 +3,7 @@ import json
 import time
 
 # Relative Imports
-from .models.CNN import BasicCNN, LeNet5
+from .models.CNN import BasicCNN, LeNet5, CNN
 from .models.ResNet import ResNet
 from .models.VG import VGG16
 
@@ -19,10 +19,10 @@ DATASET_NCLS = {
     "en": 26
 }
 MODELS = {
-    "BasicCNN": BasicCNN,
     "LeNet5": LeNet5,
-    "ResNet": ResNet,
+    "ResNet18": ResNet,
     "VGG16": VGG16,
+    "CNN": CNN
 }
 TR_SPLITS = [0, 480]
 
@@ -79,7 +79,7 @@ def expr2():
 
 
 def main():
-    
+
     LANG = 'arabic'  # Change as needed
     train_loader, val_loader, test_loader = load_dataset(LANG, class_n=480)
 
@@ -98,18 +98,25 @@ def main():
 
 
 def all_train():
+    omit = ["ar0_LeNet5", "ar0_ResNet18", 
+            "ar480_LeNet5", "Ar480_ResNet18", "ar480_CNN",
+            "ur0_LeNet5", "ur0_ResNet18",
+            "ur480_ResNet18", "ur480_LeNet5   "]
     start = time.time()
     # Train model per lang per split
     for model_name in MODELS.keys():
         for lang in DATASET_NCLS.keys():
             for split in TR_SPLITS:
+                tmp = f"{lang}{split}_{model_name}"
+                if tmp in omit: continue
+                print(f"Lang: {lang}\tSplit: {split}\tModel: {model_name}")
 
                 # Special Condition for english dataset:
                 if lang == 'en' and split == 0:
                     # Tune on reduced data, train on full data
                     train_loader, val_loader, test_loader = load_dataset(lang, class_n=480)
                     optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
-                    train_loader, val_loader, test_loader = load_dataset(lang, class_n=0)
+                    train_loader, val_loader, test_loader = load_dataset(lang, class_n=2000)
                 else:
                     train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
                     optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
@@ -127,9 +134,9 @@ def all_train():
     print(f"Completed all baselines model training\nTime: {time.strftime('%H:%M:%S', time.gmtime(end-start))}")
 
 def testing():
-    model_name = 'LeNet5'
+    model_name = 'VGG16'
     split = 480
-    for lang in ['ar']:
+    for lang in ['ur']:
         train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
         optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
         print(optimal_params)
