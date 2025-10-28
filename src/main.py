@@ -1,11 +1,12 @@
 import torch
+import json
 
 # Relative Imports
 from .models.CNN import BasicCNN, LeNet5
 from .models.ResNet import ResNet
 from .models.VG import VGG16
 
-from .train import tune, evaluate, train
+from .train import tune, evaluate, train, finetune
 from .data import load_dataset, combine_loaders
 from .utils.utils import save_output, save_model
 from pathlib import Path
@@ -23,9 +24,31 @@ MODELS = {
     "VGG16": VGG16,
 }
 
-def finetune():
+def expr3():
+    split = 480
+    lang = "ar"
+    model_name = 'CNN'
+    weights_path = "weights\BasicCNN_english_model.pth"
+    json_path = None
+
+    # Input parameter and data setup
+    optimal_params = json.load(open(json_path, 'r'))['Best_Hyperparameters']
+    train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
+    combined_loader = combine_loaders(train_loader, val_loader)
+    # Model finetuning and evaluation
+    model = finetune(model_name, weights_path, DATASET_NCLS[lang], combined_loader, optimal_params)
+    res = evaluate(model, test_loader)
+
+    base_model = "en480_CNN"
+    title = f"{lang}{split}_{base_model}-ft"
+    save_output(res, optimal_params, title, ROOT)
+    save_model(model, model_name, lang, split, ROOT)
+
+
+def expr2():
     print("Finetuning BasicCNN pre-trained on English to Urdu dataset...")
     weights = "weights\BasicCNN_english_model.pth"
+
     model = BasicCNN(num_classes=26)
     model.load_state_dict(torch.load(weights))
 

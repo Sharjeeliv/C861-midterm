@@ -39,7 +39,6 @@ MODELS = {
 # ********************************
 # HELPER FUNCTIONS
 # ********************************
-
 def _train(model, optimizer, criterion, train_loader, log=False):
     model.train()
     nclasses = model.nclasses
@@ -121,11 +120,12 @@ def get_optimizer(model_name, model, trial_params):
     weight_decay = trial_params.get("weight_decay", 0.0)
     # Build optimizer for remaining models
     if optimizer_type == "SGD":
-        return torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
+        return torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), 
+                               lr=lr, weight_decay=weight_decay, momentum=0.9)
     elif optimizer_type == "Adam":
-        return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    else:
-        raise ValueError(f"Unknown optimizer type: {optimizer_type}")
+        return torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), 
+                                lr=lr, weight_decay=weight_decay)
+    else: raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
 
 def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: DataLoader, n_classes: int):
@@ -163,6 +163,19 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     print(f"Total Training Time: {total_time:.2f}s")
     return vloss
 
+
+def _update_classifier(model, n_letters):
+    # last layer is always called fcf, replace classifier head
+    num_feats = model.fcf.in_features
+    model.fcf = torch.nn.Linear(num_feats, n_letters)
+    # Freeze all parameters
+    for param in model.parameters(): 
+        param.requires_grad = False
+    # Update classifier
+    for param in model.fcf.parameters():
+        param.requires_grad = True
+
+
 # ********************************
 # INTERFACE FUNCTIONS
 # ********************************
@@ -192,19 +205,21 @@ def evaluate(model, test_loader):
     for name, value in results.items(): print(f"{name:<15}{value:.4f}")
 
     return results
+    
 
+def finetune(model_name, weights_path, n_letters, tr_loader, optimal_params):
+    # Retrieve and update model
+    model = MODELS[model_name]
+    model.load_state_dict(torch.load(weights_path))
+    _update_classifier(model, n_letters)
+    model.to(device)
 
-def finetune(model):
-    # Freeze all layers except the last fully connected layer
-    for param in model.parameters(): param.requires_grad = False
-    # Last layers are named fcf (for custom models):
-    if hasattr(model, 'fcf'):
-        for param in model.fcf.parameters():
-            param.requires_grad = True
-    else:
-        # If the model has a different architecture, adjust accordingly
-        raise ValueError("Model does not have a 'fcf' layer. Adjust finetune_setup accordingly.")
-
+    # Criterion and optimizer
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = get_optimizer(model_name, model, optimal_params)
+    _train_loop(model, optimizer, criterion, tr_loader)
+    return model
+    
 
 def tune(model_name, tr_loader, val_loader, n_classes, lang, split):
     # Hyperparameter Tuning
