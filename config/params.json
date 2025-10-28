@@ -1,7 +1,20 @@
 {
-  "general": {},
-  "BasicCNN": {
-    "dropout": ["flt", 0.2, 0.6]
+  "LeNet5": {
+    "lr": ["log", 1e-4, 1e-2],
+    "optimizer": ["cat", "SGD", "Adam"],
+    "weight_decay": ["log", 1e-5, 1e-2],
+    "dropout": ["flt", 0.2, 0.5]
+  },
+  "VGG16": {
+    "lr": ["log", 1e-4, 1e-2],
+    "optimizer": ["cat", "SGD", "Adam"],
+    "weight_decay": ["log", 1e-5, 1e-2],
+    "dropout": ["flt", 0.3, 0.5]
+  },
+  "ResNet18": {
+    "lr": ["log", 1e-4, 1e-2],
+    "optimizer": ["cat", "SGD", "Adam"],
+    "weight_decay": ["log", 1e-5, 1e-2]
   },
   "CNN": {
     "num_conv_layers": ["int", 2, 4],

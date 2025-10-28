@@ -186,6 +186,6 @@ if __name__ == "__main__":
     # print(f"Validation batches: {len(val_loader)}")
     # print(f"Testing batches: {len(test_loader)}")
 
-    print_class_counts(DATA_DIR / 'urdu' / 'train', transform=transform)
+    print_class_counts(DATA_DIR / 'ur' / 'train', transform=transform)
     end = time.time()
     print(f"Data loading took {end - start:.2f} seconds")

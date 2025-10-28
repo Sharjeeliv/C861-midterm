@@ -1,33 +1,22 @@
 # Local
 from .utils.optuna import get_trial_params
+from .models.CNN import BasicCNN, LeNet5, CNN
+from .models.ResNet import ResNet
+from .models.VG import VGG16
+from .utils.utils import EarlyStopping
 
 # First-party
 from time import time
 import os
+from pathlib import Path
 
 # Third-party
 import torch
 from torchmetrics import Accuracy, Precision, Recall, F1Score
 import optuna
 from optuna import Trial
+import optuna.visualization as vis
 from torch.utils.data import DataLoader
-
-# Relative Imports
-from .models.CNN import BasicCNN, LeNet5, CNN
-from .models.ResNet import ResNet
-from .models.VG import VGG16
-from .utils.utils import EarlyStopping
-from .data import combine_loaders
-
-
-# TODO:
-# 1. Complete the objective function for Optuna hyperparameter tuning
-# 2. Update custom models with dict. based init
-# 3. Complete training and validation
-# 4. Implement early stopping based on validation performance
-# 5. Custom CNN via tuning
-# 6. Saving and loading models
-# 7. Evaluation function
 
 
 # ********************************
@@ -37,6 +26,8 @@ EPOCHS = 15
 N_TRIALS = 5
 WEIGHTS_DIR = "weights"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+ROOT = Path(__file__).parent.parent
+
 MODELS = {
     "BasicCNN": BasicCNN,
     "LeNet5": LeNet5,
@@ -48,16 +39,6 @@ MODELS = {
 # ********************************
 # HELPER FUNCTIONS
 # ********************************
-# def _train(model, optimizer, criterion, train_loader):
-#     model.train()
-#     for images, labels in train_loader:
-#         images, labels = images.to(device), labels.to(device)
-
-#         optimizer.zero_grad()
-#         outputs = model(images)
-#         loss = criterion(outputs, labels)
-#         loss.backward()
-#         optimizer.step()
 
 def _train(model, optimizer, criterion, train_loader, log=False):
     model.train()
@@ -126,30 +107,42 @@ def _validate(model, val_loader, criterion):
     return val_loss, val_acc
 
 
-def save_model(model, title):
-    os.makedirs(WEIGHTS_DIR, exist_ok=True)
-    torch.save(model.state_dict(), f"{WEIGHTS_DIR}/{title}_mdl.pth")
+def get_model(model_name, trial_params, n_classes):
+    model_cls = MODELS[model_name]
+    if model_name != "CNN": return model_cls(num_classes=n_classes)
+    return model_cls(**trial_params, num_classes=n_classes)
 
 
-# ********************************
-# INTERFACE FUNCTIONS
-# ********************************
+def get_optimizer(model_name, model, trial_params):
+    if model_name != "CNN": return torch.optim.Adam(model.parameters(), lr=0.001)
+    # Unpack parameters
+    optimizer_type = trial_params.get("optimizer", "Adam")
+    lr = trial_params.get("lr", 1e-3)
+    weight_decay = trial_params.get("weight_decay", 0.0)
+    # Build optimizer for remaining models
+    if optimizer_type == "SGD":
+        return torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
+    elif optimizer_type == "Adam":
+        return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    else:
+        raise ValueError(f"Unknown optimizer type: {optimizer_type}")
+
+
 def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: DataLoader, n_classes: int):
     # Guard Clause
     err_string = f"Model {model_name} not found in models dictionary."
     if model_name not in MODELS: raise ValueError(err_string)
     
     # Retrieve and instantiate model
-    model_cls = MODELS[model_name]
     trial_params = get_trial_params(trial, model_name)
     # Omit invalid configurations:
-    try: model = model_cls(**trial_params, num_classes=n_classes)
+    try: model = get_model(model_name, trial_params, n_classes)
     except RuntimeError: raise optuna.exceptions.TrialPruned()
     model.to(device)
 
     # Criterion and optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = get_optimizer(model_name, model, trial_params)
 
     # Epoch Loop:
     total_time = 0.0
@@ -170,7 +163,9 @@ def objective(trial: Trial, model_name: str, tr_loader: DataLoader, val_loader: 
     print(f"Total Training Time: {total_time:.2f}s")
     return vloss
 
-
+# ********************************
+# INTERFACE FUNCTIONS
+# ********************************
 def evaluate(model, test_loader):
     model.to(device)
     model.eval()
@@ -211,22 +206,36 @@ def finetune(model):
         raise ValueError("Model does not have a 'fcf' layer. Adjust finetune_setup accordingly.")
 
 
-def tune(model_name, tr_loader, val_loader, n_classes):
+def tune(model_name, tr_loader, val_loader, n_classes, lang, split):
     # Hyperparameter Tuning
     study = optuna.create_study(direction='minimize')
-    print(len(tr_loader))
-    print(len(val_loader))
-    study.optimize(lambda trial: objective(trial, model_name, tr_loader, val_loader, n_classes), n_trials=N_TRIALS)
+    study.optimize(lambda trial: objective(trial, model_name, tr_loader, val_loader, n_classes), 
+                   n_trials=N_TRIALS)
+    # Figures & Plotting
+    figs = {
+        "optim_history": vis.plot_optimization_history(study),
+        "param_importance": vis.plot_param_importances(study),
+        "parallel_coord": vis.plot_parallel_coordinate(study),
+        "slice": vis.plot_slice(study),
+        "contour": vis.plot_contour(study),
+    }
+
+    fig_dir = ROOT / "results" / "figures"
+    os.makedirs(fig_dir, exist_ok=True)
+
+    for name, fig in figs.items():
+        fig.write_image(fig_dir / f"{lang}{split}_{model_name}_{name}.png")
+
     
     return study.best_params
 
+
 def train(model_name, tr_loader, n_classes, optimal_params):
-    model_cls = MODELS[model_name]
-    model = model_cls(**optimal_params, num_classes=n_classes)
+    model = get_model(model_name, optimal_params, n_classes)
     model.to(device)
 
     # Criterion and optimizer
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = get_optimizer(model_name, model, optimal_params)
     _train_loop(model, optimizer, criterion, tr_loader)
     return model

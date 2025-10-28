@@ -47,17 +47,22 @@ class CNN(nn.Module):
             dummy_output = self.feature_extractor(dummy_input)
             self.flatten_size = dummy_output.view(1, -1).size(1)
 
-        self.classifier = nn.Sequential(
-            nn.Linear(self.flatten_size, fc_size),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(fc_size, num_classes)
-        )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(self.flatten_size, fc_size),
+        #     nn.ReLU(),
+        #     nn.Dropout(dropout),
+        #     nn.Linear(fc_size, num_classes)
+        # )
+        self.fc = nn.Linear(self.flatten_size, fc_size)
+        self.dropout = nn.Dropout(dropout)
+        self.fcf = nn.Linear(fc_size, num_classes)
 
     def forward(self, x):
         x = self.feature_extractor(x)
         x = torch.flatten(x, 1)
-        x = self.classifier(x)
+        x = torch.relu(self.fcf(x))
+        x = self.dropout(x)
+        x = self.output_layer(x)
         return x
 
 # Pytorch Basic CNN Model:

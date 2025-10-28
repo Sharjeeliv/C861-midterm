@@ -7,15 +7,15 @@ from .models.VG import VGG16
 
 from .train import tune, evaluate, train
 from .data import load_dataset, combine_loaders
+from .utils.utils import save_output, save_model
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 DATASET_NCLS = {
-    "arabic":   28,
-    "urdu":     40,
-    "english":  26
+    "ar": 28,
+    "ur": 40,
+    "en": 26
 }
-
 MODELS = {
     "BasicCNN": BasicCNN,
     "LeNet5": LeNet5,
@@ -71,16 +71,19 @@ def main():
 
 
 def testing():
-    LANG = 'english'  # Change as needed
-    train_loader, val_loader, test_loader = load_dataset(LANG, class_n=480)
-    # optimal_params = tune(model_name='CNN', tr_loader=train_loader, val_loader=val_loader, n_classes=DATASET_NCLS[LANG])
-    # print(vals)
+    model_name = 'LeNet5'
+    split = 480
+    for lang in ['ar']:
+        train_loader, val_loader, test_loader = load_dataset(lang, class_n=split)
+        optimal_params = tune(model_name, train_loader, val_loader, DATASET_NCLS[lang], lang, split)
 
-    optimal_params = {'num_conv_layers': 3, 'filters': 32, 'kernel_size': 5, 'activation': 'LeakyReLU', 'fc_size': 256, 'dropout': 0.3636054916994534}
-    
-    combined_loader = combine_loaders(train_loader, val_loader)
-    model = train(model_name='CNN', tr_loader=combined_loader, n_classes=DATASET_NCLS[LANG], optimal_params=optimal_params)
-    res = evaluate(model, test_loader)
+        combined_loader = combine_loaders(train_loader, val_loader)
+        model = train(model_name=model_name, tr_loader=combined_loader, n_classes=DATASET_NCLS[lang], optimal_params=optimal_params)
+        res = evaluate(model, test_loader)
+
+        title = f"{lang}{split}_{model_name}"
+        save_output(res, optimal_params, title, ROOT)
+        save_model(model, model_name, lang, split, ROOT)
 
 
 if __name__ == "__main__":
