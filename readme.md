@@ -1,4 +1,4 @@
-### **COMP-8610: Midterm Project**
+### **COMP-8610: Comparing Deep Learning Models and Cross-Script Transfer Learning between Arabic and Urdu Handwritten Letters**
 Sharjeel Mustafa
 
 To run the code please ensure AHCD, UHAT, and EMNIST are downloaded and in the data folder with abbreviations listed in the paper. Some utils are available in data.py but require manual execution to setup the data. Once datasets are prepared and the conda environment is setup, the code can be executed (by first altering the main.py depending on the task) with the following command.
