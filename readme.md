@@ -20,7 +20,8 @@ If you find this work useful, please consider citing:
 @misc{sharjeelc861m,
   title={Comparing Deep Learning Models and Cross-Script Transfer Learning between Arabic and Urdu Handwritten Letters},
   author={Sharjeel Mustafa},
-  year={2025}
+  year={2025},
+  url={https://github.com/Sharjeeliv/C861-midterm/}
 }
 ```
 
