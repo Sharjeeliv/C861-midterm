@@ -1,5 +1,5 @@
 ## **Comparing Deep Learning Models and Cross-Script Transfer Learning between Arabic and Urdu Handwritten Letters**  
-Sharjeel Mustafa
+Author: Sharjeel Mustafa
 
 ### **Introduction**  
 As research into artifical intelligence, particularly natural language processing, continues to expand, languages that are central to the production of research (e.g., English) are better suited to take advantage of such developments, leaving underdeveloped languages vulnerable. In this study we implement a variety models for handwritten letter recognition on English, Arabic, and Urdu, with models like CNN undergoing architectural tuning. 
@@ -12,6 +12,16 @@ Please ensure the AHCD, UHAT, and EMNIST datasets are downloaded and placed in t
 
 ```py
 python src.main
+```
+
+### **Citation**
+If you find this work useful, please consider citing:
+```
+@misc{sharjeelc861m,
+  title={Comparing Deep Learning Models and Cross-Script Transfer Learning between Arabic and Urdu Handwritten Letters},
+  author={Sharjeel Mustafa},
+  year={2025}
+}
 ```
 
 **Errata**
